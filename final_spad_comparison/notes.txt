@@ -1,0 +1,13 @@
+Loaded SPAD sizes:
+  20 µm -> /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_20x20_model/NN_model_20x20/pred_vqe_test_20x20.csv
+  50 µm -> /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_50x50_model/NN_model_50x50/pred_vqe_test_50x50.csv
+  100 µm -> /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_100x100_model/NN_model_100x100/pred_vqe_test_100x100.csv
+  200 µm -> /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/pred_vqe_test_200x200.csv
+
+Quick checks:
+1. overlay_frac_resolution_vs_energy.png
+2. overlay_bias_vs_energy.png
+3. overlay_mean_ratio_vs_energy.png
+4. overlay_event_counts_vs_energy.png
+5. overlay_residual_hist_10GeV.png, 20GeV.png, 80GeV.png
+6. overall_frac_resolution_vs_spad.png

@@ -1,0 +1,153 @@
+Loading environment ...
+Environment loaded.
+Begin training
+Loaded 14000 samples | Energies present: [1.0, 5.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 110.0, 120.0]
+
+=== Dataset audit (50 samples) ===
+Audit complete: 0 bad samples found out of 50 checked.
+
+mu_logE=3.516262, sigma_logE=1.329275
+INPUT SCALING: max raw value=49656.0 — log1p scaling ENABLED for all splits.
+Group G0 | Cumulative training will start at epoch 1
+Running pre-training sanity check on first batch...
+  Input x (raw): shape=torch.Size([256, 5, 200, 200]), min=0.0000, max=48323.0117
+  Input x (scaled): min=0.0000, max=10.7857, nan=False, inf=False
+  Target y: min=1.000000, max=120.000000, nan=False, inf=False
+  Channel 0 (scaled): mean=0.0266, std=0.4512, min=0.0000, max=10.7857
+  Channel 1 (scaled): mean=0.0242, std=0.4257, min=0.0000, max=10.3323
+  Channel 2 (scaled): mean=0.0318, std=0.4871, min=0.0000, max=10.4766
+  Channel 3 (scaled): mean=0.0433, std=0.5674, min=0.0000, max=10.3874
+  Channel 4 (scaled): mean=0.0065, std=0.2170, min=0.0000, max=9.3366
+  y_log_norm: min=-2.6452, max=0.9563, nan=False
+  Model output (eval  mode): min=0.0012, max=0.0746, nan=False, inf=False
+  Model output (train mode): min=-0.0612, max=0.1965, nan=False, inf=False
+  Pre-training check: PASS ✓
+[G0] Epoch 001 | Train 0.190689 | Val 0.054605 | MAE 8.118350 | RMSE 12.429370
+💾 New best (val=0.054605) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 002 | Train 0.050647 | Val 0.051323 | MAE 9.711847 | RMSE 13.038656
+💾 New best (val=0.051323) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 003 | Train 0.041726 | Val 0.037364 | MAE 7.077428 | RMSE 10.817877
+💾 New best (val=0.037364) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 004 | Train 0.038998 | Val 0.036496 | MAE 6.050770 | RMSE 8.907040
+💾 New best (val=0.036496) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 005 | Train 0.039438 | Val 0.041865 | MAE 6.090513 | RMSE 9.008726
+[G0] Epoch 006 | Train 0.036180 | Val 0.035801 | MAE 5.297889 | RMSE 8.122198
+💾 New best (val=0.035801) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 007 | Train 0.033962 | Val 0.034773 | MAE 5.845031 | RMSE 8.946665
+💾 New best (val=0.034773) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 008 | Train 0.033315 | Val 0.032769 | MAE 5.288367 | RMSE 8.126660
+💾 New best (val=0.032769) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 009 | Train 0.033750 | Val 0.032927 | MAE 5.273054 | RMSE 8.039427
+[G0] Epoch 010 | Train 0.033033 | Val 0.035885 | MAE 6.188700 | RMSE 9.311516
+[G0] Epoch 011 | Train 0.033454 | Val 0.037710 | MAE 5.986092 | RMSE 8.868045
+[G0] Epoch 012 | Train 0.031328 | Val 0.031459 | MAE 5.166299 | RMSE 7.915668
+💾 New best (val=0.031459) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 013 | Train 0.030439 | Val 0.033373 | MAE 5.784896 | RMSE 8.625670
+[G0] Epoch 014 | Train 0.030005 | Val 0.037167 | MAE 5.830026 | RMSE 8.682054
+[G0] Epoch 015 | Train 0.031617 | Val 0.030600 | MAE 5.185052 | RMSE 7.899634
+💾 New best (val=0.030600) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 016 | Train 0.029898 | Val 0.030183 | MAE 5.049924 | RMSE 7.736909
+💾 New best (val=0.030183) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 017 | Train 0.029213 | Val 0.030523 | MAE 5.137677 | RMSE 7.828728
+[G0] Epoch 018 | Train 0.029075 | Val 0.030451 | MAE 5.293515 | RMSE 8.029791
+[G0] Epoch 019 | Train 0.029204 | Val 0.034237 | MAE 5.566579 | RMSE 8.074914
+[G0] Epoch 020 | Train 0.031311 | Val 0.030906 | MAE 5.840080 | RMSE 8.852422
+[G0] Epoch 021 | Train 0.029083 | Val 0.030598 | MAE 5.195732 | RMSE 7.933378
+[G0] Epoch 022 | Train 0.028194 | Val 0.030698 | MAE 5.012740 | RMSE 7.699478
+[G0] Epoch 023 | Train 0.027984 | Val 0.029624 | MAE 5.280760 | RMSE 8.027450
+💾 New best (val=0.029624) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 024 | Train 0.026229 | Val 0.029778 | MAE 5.049802 | RMSE 7.752183
+[G0] Epoch 025 | Train 0.025763 | Val 0.029107 | MAE 5.111568 | RMSE 7.790524
+💾 New best (val=0.029107) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 026 | Train 0.026048 | Val 0.029146 | MAE 5.102603 | RMSE 7.739213
+[G0] Epoch 027 | Train 0.025930 | Val 0.033228 | MAE 5.095088 | RMSE 7.699754
+[G0] Epoch 028 | Train 0.026722 | Val 0.029230 | MAE 4.987244 | RMSE 7.571890
+[G0] Epoch 029 | Train 0.024962 | Val 0.028581 | MAE 4.913621 | RMSE 7.588192
+💾 New best (val=0.028581) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 030 | Train 0.024357 | Val 0.028383 | MAE 4.926125 | RMSE 7.553468
+💾 New best (val=0.028383) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 031 | Train 0.024403 | Val 0.030606 | MAE 5.710224 | RMSE 8.686867
+[G0] Epoch 032 | Train 0.023871 | Val 0.028141 | MAE 4.875825 | RMSE 7.482892
+💾 New best (val=0.028141) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 033 | Train 0.023974 | Val 0.028712 | MAE 5.159853 | RMSE 7.887919
+[G0] Epoch 034 | Train 0.023717 | Val 0.030356 | MAE 5.240456 | RMSE 7.972191
+[G0] Epoch 035 | Train 0.024550 | Val 0.028621 | MAE 4.968721 | RMSE 7.633740
+[G0] Epoch 036 | Train 0.023183 | Val 0.029071 | MAE 5.383548 | RMSE 8.233690
+[G0] Epoch 037 | Train 0.022880 | Val 0.029764 | MAE 4.950860 | RMSE 7.461517
+[G0] Epoch 038 | Train 0.023472 | Val 0.027852 | MAE 4.842198 | RMSE 7.428599
+💾 New best (val=0.027852) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 039 | Train 0.022493 | Val 0.028959 | MAE 5.093469 | RMSE 7.726124
+[G0] Epoch 040 | Train 0.022480 | Val 0.028036 | MAE 4.919292 | RMSE 7.504719
+[G0] Epoch 041 | Train 0.023767 | Val 0.033495 | MAE 5.758541 | RMSE 8.385710
+[G0] Epoch 042 | Train 0.022249 | Val 0.027677 | MAE 4.919131 | RMSE 7.515902
+💾 New best (val=0.027677) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 043 | Train 0.021760 | Val 0.029278 | MAE 4.963839 | RMSE 7.570488
+[G0] Epoch 044 | Train 0.020850 | Val 0.027984 | MAE 5.095968 | RMSE 7.680046
+[G0] Epoch 045 | Train 0.020294 | Val 0.030855 | MAE 5.253066 | RMSE 7.683653
+[G0] Epoch 046 | Train 0.020698 | Val 0.029320 | MAE 4.900130 | RMSE 7.399016
+[G0] Epoch 047 | Train 0.020091 | Val 0.030095 | MAE 5.222363 | RMSE 7.653424
+[G0] Epoch 048 | Train 0.019070 | Val 0.036340 | MAE 5.265196 | RMSE 7.643855
+[G0] Epoch 049 | Train 0.019093 | Val 0.027096 | MAE 4.805194 | RMSE 7.297133
+💾 New best (val=0.027096) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 050 | Train 0.017583 | Val 0.027467 | MAE 4.823586 | RMSE 7.323126
+[G0] Epoch 051 | Train 0.017711 | Val 0.027173 | MAE 4.817273 | RMSE 7.326462
+[G0] Epoch 052 | Train 0.017501 | Val 0.027152 | MAE 4.902118 | RMSE 7.367188
+[G0] Epoch 053 | Train 0.016944 | Val 0.028075 | MAE 4.865021 | RMSE 7.324269
+[G0] Epoch 054 | Train 0.017505 | Val 0.027473 | MAE 4.896930 | RMSE 7.456591
+[G0] Epoch 055 | Train 0.016314 | Val 0.027252 | MAE 4.799612 | RMSE 7.271358
+[G0] Epoch 056 | Train 0.016077 | Val 0.027307 | MAE 4.772113 | RMSE 7.217245
+[G0] Epoch 057 | Train 0.016021 | Val 0.026792 | MAE 4.780386 | RMSE 7.247408
+💾 New best (val=0.026792) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 058 | Train 0.015331 | Val 0.026747 | MAE 4.818213 | RMSE 7.294289
+💾 New best (val=0.026747) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 059 | Train 0.015748 | Val 0.027902 | MAE 4.897959 | RMSE 7.267543
+[G0] Epoch 060 | Train 0.016591 | Val 0.026841 | MAE 4.855762 | RMSE 7.372088
+[G0] Epoch 061 | Train 0.015260 | Val 0.026897 | MAE 4.772058 | RMSE 7.263021
+[G0] Epoch 062 | Train 0.015381 | Val 0.026962 | MAE 4.821549 | RMSE 7.222888
+[G0] Epoch 063 | Train 0.015261 | Val 0.027112 | MAE 4.786983 | RMSE 7.166683
+[G0] Epoch 064 | Train 0.015037 | Val 0.027166 | MAE 4.877324 | RMSE 7.346205
+[G0] Epoch 065 | Train 0.014908 | Val 0.026642 | MAE 4.751640 | RMSE 7.156328
+💾 New best (val=0.026642) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 066 | Train 0.014767 | Val 0.026728 | MAE 4.793869 | RMSE 7.189371
+[G0] Epoch 067 | Train 0.014389 | Val 0.026553 | MAE 4.740094 | RMSE 7.164826
+💾 New best (val=0.026553) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 068 | Train 0.015087 | Val 0.026621 | MAE 4.741014 | RMSE 7.139463
+[G0] Epoch 069 | Train 0.014394 | Val 0.026553 | MAE 4.732642 | RMSE 7.176020
+[G0] Epoch 070 | Train 0.014519 | Val 0.026591 | MAE 4.750199 | RMSE 7.136061
+[G0] Epoch 071 | Train 0.014617 | Val 0.026555 | MAE 4.734602 | RMSE 7.129536
+[G0] Epoch 072 | Train 0.014630 | Val 0.026584 | MAE 4.736096 | RMSE 7.144354
+[G0] Epoch 073 | Train 0.014083 | Val 0.026492 | MAE 4.735956 | RMSE 7.113908
+💾 New best (val=0.026492) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 074 | Train 0.014386 | Val 0.026643 | MAE 4.739206 | RMSE 7.142278
+[G0] Epoch 075 | Train 0.014154 | Val 0.026691 | MAE 4.719004 | RMSE 7.150075
+[G0] Epoch 076 | Train 0.014294 | Val 0.026556 | MAE 4.793939 | RMSE 7.220375
+[G0] Epoch 077 | Train 0.013844 | Val 0.026439 | MAE 4.727521 | RMSE 7.100216
+💾 New best (val=0.026439) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 078 | Train 0.014146 | Val 0.026748 | MAE 4.740432 | RMSE 7.154282
+[G0] Epoch 079 | Train 0.013674 | Val 0.027496 | MAE 4.829673 | RMSE 7.295054
+[G0] Epoch 080 | Train 0.014088 | Val 0.026596 | MAE 4.726593 | RMSE 7.113413
+[G0] Epoch 081 | Train 0.014084 | Val 0.026519 | MAE 4.719262 | RMSE 7.108998
+[G0] Epoch 082 | Train 0.013846 | Val 0.026692 | MAE 4.787408 | RMSE 7.200071
+[G0] Epoch 083 | Train 0.013977 | Val 0.026487 | MAE 4.728627 | RMSE 7.093393
+[G0] Epoch 084 | Train 0.013578 | Val 0.027037 | MAE 4.715628 | RMSE 7.125290
+[G0] Epoch 085 | Train 0.013295 | Val 0.026565 | MAE 4.716247 | RMSE 7.077332
+[G0] Epoch 086 | Train 0.013438 | Val 0.026565 | MAE 4.734314 | RMSE 7.104970
+[G0] Epoch 087 | Train 0.013450 | Val 0.026798 | MAE 4.759046 | RMSE 7.095639
+[G0] Epoch 088 | Train 0.013555 | Val 0.026416 | MAE 4.720061 | RMSE 7.091698
+💾 New best (val=0.026416) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 089 | Train 0.013489 | Val 0.026458 | MAE 4.716372 | RMSE 7.105884
+[G0] Epoch 090 | Train 0.013344 | Val 0.026422 | MAE 4.722233 | RMSE 7.093348
+[G0] Epoch 091 | Train 0.013172 | Val 0.026610 | MAE 4.731342 | RMSE 7.081244
+[G0] Epoch 092 | Train 0.013349 | Val 0.026468 | MAE 4.705400 | RMSE 7.075751
+[G0] Epoch 093 | Train 0.013325 | Val 0.026478 | MAE 4.716561 | RMSE 7.103510
+[G0] Epoch 094 | Train 0.013118 | Val 0.026593 | MAE 4.727316 | RMSE 7.069381
+[G0] Epoch 095 | Train 0.013269 | Val 0.026515 | MAE 4.722938 | RMSE 7.058629
+[G0] Epoch 096 | Train 0.013093 | Val 0.026478 | MAE 4.725413 | RMSE 7.093407
+[G0] Epoch 097 | Train 0.013241 | Val 0.026463 | MAE 4.703322 | RMSE 7.083706
+[G0] Epoch 098 | Train 0.012846 | Val 0.026399 | MAE 4.707640 | RMSE 7.070569
+💾 New best (val=0.026399) saved to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/best_latest.ckpt
+[G0] Epoch 099 | Train 0.013188 | Val 0.026421 | MAE 4.721294 | RMSE 7.100774
+[G0] Epoch 100 | Train 0.013077 | Val 0.026418 | MAE 4.705549 | RMSE 7.055259
+[G0] Finished. Best val=0.026399. Logs in /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200
+NaN diagnostics written to /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_200x200_model/NN_model_200x200/nan_diagnostics.log
+Training finished
