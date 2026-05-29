@@ -3,16 +3,19 @@
 home_dir=$PWD
 sim_dir=${home_dir}/../DREAMSim/sim/build
 dest_dir=/lustre/work/$USER/SPAD_results  
-input_dir=/lustre/work/$USER/pi_test      
+input_dir=/lustre/work/$USER/pi_test      # Make sure input_dir matches up with output dir of simulations
 
 mkdir -p "${dest_dir}"
 mkdir -p batch_jobs
 mkdir -p batch_jobs/LOGDIR
 cd batch_jobs
 
+# --------- Adjustable parameters -------------
 particle="pi+"
 
+# SPAD size for deadtime effects
 SPAD_Size=200x200
+# Readout size
 Channel_Size=1000x1000
 
 # Group size is total nEvents trained to NN
@@ -23,6 +26,8 @@ nJobs=140
 
 # All energies assuming equal weight
 Energies=(1 5 10 20 30 40 50 60 70 80 90 100 110 120)
+
+# ----------------------------------------------
 nEnergies=${#Energies[@]}
 
 

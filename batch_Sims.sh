@@ -1,14 +1,23 @@
 #!/bin/bash
 
+#
+#   This code is used to batch GEANT4 simulations onto the HPCC
+#   assuming DREAMSim repository next to dSiPM_SPAD_NN directory
+#   and on commit a2b7a91
+#
+
+
+
 home_dir=$PWD
 sim_dir=${home_dir}/../DREAMSim/sim/build
-dest_dir=/lustre/work/samumcki/pi_train
+dest_dir=/lustre/work/$USER/pi_train
 
 mkdir -p "${dest_dir}"
 mkdir -p batch_jobs
 mkdir -p batch_jobs/LOGDIR
 cd batch_jobs
 
+# --------- Adjustable parameters -------------
 particle="pi+"
 
 # Group size is total nEvents trained to NN
@@ -19,6 +28,8 @@ nJobs=100
 
 # All energies assuming equal weight
 Energies=(1 5)
+
+# ---------------------------------------------
 nEnergies=${#Energies[@]}
 
 

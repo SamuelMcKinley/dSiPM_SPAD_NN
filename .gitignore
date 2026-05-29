@@ -1,0 +1,4 @@
+batch_jobs/*.sh
+batch_jobs/LOGDIR/*
+NN_Analysis/*
+!NN_Analysis/model_copy

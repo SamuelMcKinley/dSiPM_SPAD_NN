@@ -1,9 +1,0 @@
-Loading environment ...
-Environment loaded.
-Begin training
-Loaded 10000 samples | Energies present: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
-Loading checkpoint: /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_50x50_model/NN_model_50x50/best_latest.ckpt
-mu_logE=3.813027, sigma_logE=0.695457
-Predict-only: writing /lustre/work/samumcki/final_dSiPM_run/NN_Analysis/unnorm_50x50_model/NN_model_50x50/pred_10k_10to100_step10.csv
-Done.
-Training finished

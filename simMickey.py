@@ -1,3 +1,10 @@
+#
+#   Code to simulate dSiPM SPADs in the original (mickey)
+#   orientation given the photon outputs of the GEANT4 sim.
+#   Outputs tensors to be trained to CNN
+#
+
+
 import os
 import sys
 import re
@@ -18,11 +25,7 @@ ROOT.TH1.AddDirectory(False)
 # Script & repo paths
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))  # <— repo path for consistent outputs
 
-# ------------------------------------------------------------
-# Adjustable geometry settings  (RESTORED: "Mickey Mouse" layout)
-#   - Original code used the same shift for all 4 fibers
-#   - No shrink toward center
-# ------------------------------------------------------------
+# Keep "mickey mouse"-type layout
 xShift = np.array([3.8523, 3.8523, 3.8523, 3.8523], dtype=np.float32)
 yShift = np.array([-3.8588, -3.8588, -3.8588, -3.8588], dtype=np.float32)
 

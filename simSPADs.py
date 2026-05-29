@@ -1,3 +1,9 @@
+#
+#   Code to simulate dSiPM SPADs given the photon outputs of the GEANT4 sim
+#   Outputs tensors to be trained to CNN
+#
+
+
 import os
 import sys
 import re

@@ -1,30 +1,39 @@
 #!/bin/bash
 
+# 
+#   This code is used to batch SPAD simulations on the HPCC preserving 
+#   the original fiber layout (or "mickey mouse" layout)
+#
+
 home_dir=$PWD
 sim_dir=${home_dir}/../DREAMSim/sim/build
-dest_dir=/lustre/work/samumcki/SPAD_results
-input_dir=/home/samumcki/sim_results/train_sims
+dest_dir=/lustre/work/$USER/SPAD_results
+input_dir=/home/$USER/sim_results/train_sims
 
 mkdir -p "${dest_dir}"
 mkdir -p batch_jobs
 mkdir -p batch_jobs/LOGDIR
 cd batch_jobs
 
+# --------- Adjustable parameters -------------
 particle="pi+"
 
+# SPAD size for deadtime effects
 SPAD_Size=200x200
+# Readout size
 Channel_Size=1000x1000
 
 # Group size is total nEvents trained to NN
-Group_Size=10000
+Group_Size=14000
 
 # Number of SLURM jobs
-nJobs=100
+nJobs=140
 
 # All energies assuming equal weight
-Energies=(10 20 30 40 50 60 70 80 90 100)
-nEnergies=${#Energies[@]}
+Energies=(1 5 10 20 30 40 50 60 70 80 90 100 110 120)
 
+# ----------------------------------------------
+nEnergies=${#Energies[@]}
 
 #Check to make sure Group size is divisible by job size
 if (( Group_Size % nJobs != 0)); then
@@ -72,7 +81,7 @@ echo "Environment loaded."
 
 cd ${dest_dir}
 
-python3 -u ${home_dir}/Mickey_Sim.py \
+python3 -u ${home_dir}/simMickey.py \
 "${sim_file}" \
 "${energy}" \
 M_SPAD_output_${energy}GeV_run${run}_SPAD${SPAD_Size}_Channel${Channel_Size} \
