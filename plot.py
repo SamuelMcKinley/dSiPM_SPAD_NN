@@ -1,3 +1,8 @@
+#
+#   Creates many plots useful for photon analysis. NO NN PLOTS
+#
+
+
 """
 plot.py  —  Photon study plots from photon_study_summary.csv
 Usage:  python plot.py <output_folder>

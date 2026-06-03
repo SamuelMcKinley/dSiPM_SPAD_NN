@@ -1,4 +1,9 @@
-#!/usr/bin/env python3
+#   ***** outdated? *****
+#   Code plots Deadtime loss fraction vs. Energy & lnN vs. Energy
+#   Input: python plot_photon_csv.py <path_to_photon_tracking.csv> -o <outdir> --events-per-group <events each csv row summarizes>
+#
+
+
 import argparse
 import csv
 import math

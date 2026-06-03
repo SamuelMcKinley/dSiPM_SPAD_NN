@@ -1,3 +1,9 @@
+#
+#   Plotting code that turns .npy into .png histograms
+#   Input: python plot_npy.py <input_npy> -o <output_directory>
+#
+
+
 import os
 import argparse
 import re

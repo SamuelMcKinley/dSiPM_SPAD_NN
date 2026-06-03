@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+#
+#   Many useful plots for NN output comparing SPADs
+#   Input: python plot_spad_comparison.py --root <root directory, usually the one this code is in> \
+#   --pred-name <name of prediction csv file> --spads <all spad sizes> --energies <all energies> \
+#   --hist-energies <energies for gaussian histograms> --outdir <output directory>
+
+#   Input list above non-comprehensive. Other optional parameters at start of main()
 
 import os
 import csv
@@ -172,7 +178,7 @@ def write_summary_csv(outdir, summary):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="/lustre/work/samumcki/final_dSiPM_run")
-    ap.add_argument("--model-prefix", default="unnorm_",
+    ap.add_argument("--model-prefix", default="",  # Used for name prefixes such as A_20x20_model --> "A_". Leave blank in most cases                      
                     help="Set to 'unnorm_' for unnormalized models, or '' for normal models")
     ap.add_argument("--pred-name", default="pred_10k_10to100_step10.csv",
                     help="Preferred prediction CSV filename inside each NN_model_* dir")
