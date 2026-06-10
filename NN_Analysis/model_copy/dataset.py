@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import re
 from pathlib import Path
 from typing import List, Tuple
@@ -9,6 +10,35 @@ from torch.utils.data import Dataset
 
 # Matches any "...30GeV..." anywhere in the *full path string*
 GEV_ANYWHERE_RE = re.compile(r"(?P<energy>\d+(?:\.\d+)?)GeV")
+
+
+def _parse_time_slices_spec(spec: str) -> np.ndarray:
+    pairs = []
+    for part in str(spec).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        low, high = part.split("-", 1)
+        pairs.append((float(low), float(high)))
+    if not pairs:
+        raise ValueError("TIME_SLICES produced no ranges")
+    return np.asarray(pairs, dtype=np.float32)
+
+
+def _npz_matches_expected_time_slices(path: Path, expected: np.ndarray | None, dtype: np.dtype) -> bool:
+    if expected is None:
+        return True
+    try:
+        with np.load(path, allow_pickle=False) as z:
+            arr = _to_chw(np.asarray(z["x"], dtype=dtype))
+            if arr.shape[0] != expected.shape[0]:
+                return False
+            if "time_slices" not in z:
+                return False
+            actual = np.asarray(z["time_slices"], dtype=np.float32)
+    except Exception:
+        return False
+    return actual.shape == expected.shape and np.allclose(actual, expected, rtol=0.0, atol=1.0e-6)
 
 def _parse_energy_from_path(p: Path) -> float:
     s = str(p)
@@ -53,14 +83,24 @@ class PhotonEnergyDataset(Dataset):
             files = [path]
         elif path.is_dir():
             if recursive:
-                files = sorted([p for p in path.rglob("*.npz") if p.is_file()])
+                files = sorted([p for p in path.rglob("*.npz") if p.is_file() and ".bad_" not in str(p) and "_dup" not in p.name])
             else:
-                files = sorted([p for p in path.iterdir() if p.is_file() and p.suffix.lower() == ".npz"])
+                files = sorted([p for p in path.iterdir() if p.is_file() and p.suffix.lower() == ".npz" and ".bad_" not in str(p) and "_dup" not in p.name])
         else:
             raise FileNotFoundError(f"tensor_path not found: {tensor_path}")
 
+        expected_spec = os.environ.get("TIME_SLICES") or os.environ.get("EXPECTED_TIME_SLICES")
+        expected_slices = _parse_time_slices_spec(expected_spec) if expected_spec else None
+        if expected_slices is not None:
+            before = len(files)
+            files = [p for p in files if _npz_matches_expected_time_slices(p, expected_slices, dtype)]
+            skipped = before - len(files)
+            if skipped:
+                print(f"Skipped {skipped} stale/incompatible tensor files not matching TIME_SLICES ({expected_slices.shape[0]} slices)")
+
         if len(files) == 0:
-            raise RuntimeError(f"No .npz files found under {tensor_path} (recursive={recursive})")
+            detail = " matching TIME_SLICES" if expected_slices is not None else ""
+            raise RuntimeError(f"No .npz files{detail} found under {tensor_path} (recursive={recursive})")
 
         self.files: List[Path] = files
         self.dtype = dtype

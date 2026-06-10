@@ -1,4 +1,52 @@
-batch_jobs/*.sh
-batch_jobs/LOGDIR/*
+# SLURM generated files
+slurm-*.out
+slurm-*.err
+machinefile.*
+workflow_*.out
+workflow_*.err
+workflow_logs/
+
+# Generated batch scripts and logs
+batch_jobs/
+LOGDIR/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Simulation and tensor outputs
+*.root
+*.root.*
+*.root.bad_*
+*.npy
+*.npz
+*.ckpt
+*.pt
+*.pth
+*.h5
+
+# Generated CSV/text analysis outputs
+photon_energy_SPAD*_CH*.csv
+photon_tracking.csv
+photon_stats.csv
+predictions_*.csv
+*_metrics.csv
+*.bad_*
+
+# Generated plots and analysis directories
+plots_mpl/
+photon_time_plots/
+photon_full_analysis/
+
+# Generated NN model directories; keep only the template source
 NN_Analysis/*
-!NN_Analysis/model_copy
+!NN_Analysis/model_copy/
+!NN_Analysis/model_copy/**
+NN_Analysis/model_copy/__pycache__/
+NN_Analysis/model_copy/**/*.py[cod]
+
+# Local/editor noise
+.DS_Store
+*.swp
+*.swo

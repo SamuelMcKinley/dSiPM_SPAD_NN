@@ -1,17 +1,14 @@
 #!/bin/bash
 
-# Submit one training job from a copied model directory.
-# Edit these variables after copying model_copy to e.g. 20x20_model.
+# Submit one prediction job from a copied model directory.
+# Usually run after trainNN.sh has produced NN_model_<SPAD_SIZE>/best_latest.ckpt.
 SPAD_SIZE=${SPAD_SIZE:-20x20}
-TENSOR_DIR=${TENSOR_DIR:-/lustre/work/$USER/SPAD_results/train_${SPAD_SIZE}}
+TENSOR_DIR=${TENSOR_DIR:-/lustre/work/$USER/SPAD_results/predict_${SPAD_SIZE}}
 MODEL_BASE=${MODEL_BASE:-NN_model}
-GROUP=${GROUP:-}
-EPOCHS=${EPOCHS:-50}
-BATCH_SIZE=${BATCH_SIZE:-32}
+CHECKPOINT=${CHECKPOINT:-${PWD}/${MODEL_BASE}_${SPAD_SIZE}/best_latest.ckpt}
+PRED_CSV=${PRED_CSV:-predictions_${SPAD_SIZE}.csv}
+BATCH_SIZE=${BATCH_SIZE:-256}
 WORKERS=${WORKERS:-8}
-LEARNING_RATE=${LEARNING_RATE:-3e-4}
-VAL_SPLIT=${VAL_SPLIT:-0.30}
-EPOCH_SAMPLES=${EPOCH_SAMPLES:-0}
 PARTITION=${PARTITION:-matador}
 MEMORY=${MEMORY:-32G}
 CPUS=${CPUS:-8}
@@ -20,19 +17,11 @@ TIME_SLICES=${TIME_SLICES:-}
 mkdir -p LOGDIR
 
 gen_script() {
-    local script_name="NN_Training_${SPAD_SIZE}.sh"
-    local group_arg=""
-    if [ -n "${GROUP}" ]; then
-        group_arg="--group ${GROUP}"
-    fi
-    local epoch_samples_arg=""
-    if [ "${EPOCH_SAMPLES}" -gt 0 ]; then
-        epoch_samples_arg="--epoch-samples ${EPOCH_SAMPLES}"
-    fi
+    local script_name="NN_Predict_${SPAD_SIZE}.sh"
 
     cat << EOF > "$script_name"
 #!/bin/bash
-#SBATCH -J "NN_train_${SPAD_SIZE}"
+#SBATCH -J "NN_pred_${SPAD_SIZE}"
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
 #SBATCH -o LOGDIR/%x.%j.out
@@ -54,15 +43,13 @@ python3 -u train.py \
   --spad "${SPAD_SIZE}" \
   --recursive \
   --base-dir "${MODEL_BASE}" \
-  --epochs "${EPOCHS}" \
+  --predict-only \
+  --checkpoint "${CHECKPOINT}" \
   --bs "${BATCH_SIZE}" \
   --workers "${WORKERS}" \
-  --lr "${LEARNING_RATE}" \
-  --val-split "${VAL_SPLIT}" \
-  ${group_arg} \
-  ${epoch_samples_arg}
+  --pred-csv "${PRED_CSV}"
 
-echo "Training finished"
+echo "Prediction finished"
 EOF
 
     chmod +x "$script_name"

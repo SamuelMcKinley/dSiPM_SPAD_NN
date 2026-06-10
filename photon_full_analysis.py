@@ -11,10 +11,10 @@ from collections import defaultdict
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 Deadtime = True
-CHANNEL_SIZE = "1000x1000"   # fixed channel size for tensors
+CHANNEL_SIZE = os.environ.get("CHANNEL_SIZE", "1000x1000")   # fixed channel size for tensors
 
 # SPAD sizes to loop over (um, square)
-SPAD_SIZES_UM = [20, 50, 100, 200]
+SPAD_SIZES_UM = [int(x) for x in os.environ.get("SPAD_SIZES_UM", "20 50 100 200").replace(",", " ").split()]
 
 # ROOT setup
 ROOT.gROOT.SetBatch(True)
@@ -130,7 +130,14 @@ def process_file(input_file_path, energy, output_folder, spad_um, ch):
     spad_nBins   = getNBins(DET_MIN, DET_MAX, spad_spacing)
 
     input_file = ROOT.TFile(input_file_path, "READ")
-    tree       = input_file.Get("tree")
+    if not input_file or input_file.IsZombie():
+        raise OSError(f"ROOT file is unreadable or zombie: {input_file_path}")
+
+    tree = input_file.Get("tree")
+    if not tree:
+        input_file.Close()
+        raise OSError(f"ROOT file has no 'tree' TTree: {input_file_path}")
+
     root_stem  = os.path.splitext(os.path.basename(input_file_path))[0]
 
     os.makedirs(os.path.join(output_folder, "npy"), exist_ok=True)
@@ -255,9 +262,9 @@ def make_plots(all_records, output_folder):
     spad_sizes= sorted(set(r["spad_um"] for r in all_records))
 
     # color palette per SPAD size
-    spad_colors = {20: R.kBlue+1, 50: R.kRed+1, 100: R.kGreen+2, 200: R.kOrange+1}
+    spad_colors = {10: R.kViolet+1, 20: R.kBlue+1, 50: R.kRed+1, 100: R.kGreen+2, 200: R.kOrange+1}
     # marker styles per SPAD size
-    spad_markers= {20: 20, 50: 21, 100: 22, 200: 23}
+    spad_markers= {10: 24, 20: 20, 50: 21, 100: 22, 200: 23}
     # line styles per energy index
     energy_colors = [R.kBlue+1, R.kRed+1, R.kGreen+2, R.kOrange+1,
                      R.kMagenta+1, R.kCyan+2, R.kViolet+1, R.kTeal+2,
@@ -702,6 +709,7 @@ def main():
     print("=" * 70)
 
     all_records = []
+    skipped_files = []
 
     for fpath, energy in file_energy_pairs:
         print(f"\n{'─'*70}")
@@ -709,11 +717,33 @@ def main():
         print(f"{'─'*70}")
         for spad_um in SPAD_SIZES_UM:
             print(f"\n  → SPAD {spad_um}x{spad_um} µm²")
-            records = process_file(fpath, energy, output_folder, spad_um, ch)
+            try:
+                records = process_file(fpath, energy, output_folder, spad_um, ch)
+            except Exception as exc:
+                print(f"    SKIP: {fpath} for SPAD {spad_um}x{spad_um}: {exc}")
+                skipped_files.append({
+                    "file": fpath,
+                    "energy": energy,
+                    "spad_um": spad_um,
+                    "error": str(exc),
+                })
+                continue
             all_records.extend(records)
+
+    if skipped_files:
+        skipped_path = os.path.join(output_folder, "skipped_root_files.csv")
+        with open(skipped_path, "w", newline="") as sf:
+            writer = csv.DictWriter(sf, fieldnames=["file", "energy", "spad_um", "error"])
+            writer.writeheader()
+            writer.writerows(skipped_files)
+        print(f"Skipped {len(skipped_files)} file/SPAD combinations; details written to {skipped_path}")
 
     print(f"\n{'='*70}")
     print(f"All files done. Total event-records: {len(all_records)}")
+
+    if not all_records:
+        print("ERROR: No photon records were produced; all inputs failed or were empty.")
+        sys.exit(1)
 
     write_master_csv(all_records, output_folder)
     make_plots(all_records, output_folder)
@@ -722,7 +752,8 @@ def main():
     meta_path = os.path.join(output_folder, "run_meta.txt")
     with open(meta_path, "w") as m:
         m.write(f"Run timestamp : {datetime.now()}\n")
-        m.write(f"Files processed: {len(file_energy_pairs)}\n")
+        m.write(f"Files requested : {len(file_energy_pairs)}\n")
+        m.write(f"Skipped file/SPAD combinations: {len(skipped_files)}\n")
         for fp, en in file_energy_pairs:
             m.write(f"  {fp}  ({en} GeV)\n")
         m.write(f"SPAD sizes    : {SPAD_SIZES_UM} µm\n")

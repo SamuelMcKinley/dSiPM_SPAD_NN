@@ -11,9 +11,14 @@ import numpy as np
 import ROOT
 import csv
 import fcntl
+import shutil
 
 # Deadtime Boolean
 Deadtime = True
+
+# Set True only when you want the original "Mickey" fiber placement:
+# one fixed fiber shift and no shrink/distortion correction.
+RESET_FIBER_LAYOUT_TO_ORIGINAL = False
 
 # ROOT setup
 ROOT.gROOT.SetBatch(True)
@@ -24,14 +29,18 @@ ROOT.TH1.AddDirectory(False)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 # Adjustable geometry settings
-xShift = np.array([3.7308, 3.5768, 3.8008, 3.6468])
-yShift = np.array([-3.7293, -3.6878, -3.6878, -3.6488])
+DEFAULT_X_SHIFT = np.array([3.7308, 3.5768, 3.8008, 3.6468])
+DEFAULT_Y_SHIFT = np.array([-3.7293, -3.6878, -3.6878, -3.6488])
+ORIGINAL_X_SHIFT = np.array([3.8523, 3.8523, 3.8523, 3.8523], dtype=np.float32)
+ORIGINAL_Y_SHIFT = np.array([-3.8588, -3.8588, -3.8588, -3.8588], dtype=np.float32)
 shrink_rules = [(0.1 + 0.4 * i, round(0.23 * i, 2)) for i in range(40)]
 limits = np.array([rule[0] for rule in shrink_rules])
 shift_amounts = np.array([rule[1] for rule in shrink_rules])
 DET_MIN = -100.0
 DET_MAX =  100.0
 DET_WIDTH = DET_MAX - DET_MIN
+DEFAULT_TIME_SLICES_SPEC = "0-8,8-9,9-9.1,9.1-9.2,9.2-9.3,9.3-9.4,9.4-9.5,9.5-9.6,9.6-9.7,9.7-9.8,9.8-9.9,9.9-10,10-10.2,10.2-10.4,10.4-10.6,10.6-10.8,10.8-11,11-12,12-13,13-14,14-15,15-16,16-17,17-18,18-19,19-20,20-21,21-22,22-23,23-24,24-25,25-40"
+
 
 # Wavelength-dependent QE
 # Degree-5 polynomial fit to SiPM eta(lambda)
@@ -45,6 +54,24 @@ _QE_COEFFS = [
      1.3083151701e-02,   # c1
     -1.0675291442e+00,   # c0
 ]
+
+def parse_time_slices(spec: str):
+    ranges = []
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" not in part:
+            raise ValueError(f"Bad time slice '{part}'. Expected low-high, e.g. 9.1-9.2")
+        low_s, high_s = part.split("-", 1)
+        low = float(low_s)
+        high = float(high_s)
+        if high <= low:
+            raise ValueError(f"Bad time slice '{part}': high must be greater than low")
+        ranges.append((low, high))
+    if not ranges:
+        raise ValueError("TIME_SLICES produced no ranges")
+    return ranges
 
 def eta_lambda(lam_nm: np.ndarray) -> np.ndarray:
 
@@ -60,16 +87,15 @@ def shrink_toward_center_array(vals: np.ndarray) -> np.ndarray:
     idx = np.clip(idx, 0, len(shift_amounts) - 1)
     return vals - shift_amounts[idx] * np.sign(vals)
 
-def unique_path(path: str) -> str:
-    if not os.path.exists(path):
-        return path
-    base, ext = os.path.splitext(path)
-    k = 1
-    while True:
-        candidate = f"{base}_dup{k}{ext}"
-        if not os.path.exists(candidate):
-            return candidate
-        k += 1
+def apply_fiber_layout(g):
+    if RESET_FIBER_LAYOUT_TO_ORIGINAL:
+        x_shifted = g.pos_final_x + np.take(ORIGINAL_X_SHIFT, g.productionFiber)
+        y_shifted = g.pos_final_y + np.take(ORIGINAL_Y_SHIFT, g.productionFiber)
+        return x_shifted, y_shifted
+
+    x_raw = g.pos_final_x + np.take(DEFAULT_X_SHIFT, g.productionFiber)
+    y_raw = g.pos_final_y + np.take(DEFAULT_Y_SHIFT, g.productionFiber)
+    return shrink_toward_center_array(x_raw), shrink_toward_center_array(y_raw)
 
 class Photons:
     def __init__(self, event):
@@ -183,9 +209,20 @@ def main():
     input_file = ROOT.TFile(input_file_path, "READ")
     tree = input_file.Get("tree")
 
-    os.makedirs(os.path.join(output_folder, "npy"), exist_ok=True)
+    npy_dir = os.path.join(output_folder, "npy")
     csv_path = os.path.join(output_folder, "labels.csv")
-    write_header = not os.path.exists(csv_path)
+    photon_stats_path = os.path.join(output_folder, "photon_stats.csv")
+    time_slices_path = os.path.join(output_folder, "time_slices.txt")
+
+    # One batch job owns one output folder. Clean it so reruns replace the
+    # previous attempt instead of appending duplicate event tensors.
+    if os.path.isdir(npy_dir):
+        shutil.rmtree(npy_dir)
+    for stale_path in (csv_path, photon_stats_path, time_slices_path):
+        if os.path.exists(stale_path):
+            os.remove(stale_path)
+    os.makedirs(npy_dir, exist_ok=True)
+    photon_stat_rows = []
 
     total_photons_cumulative, total_lost_cumulative, nEvents = 0, 0, -1
 
@@ -193,24 +230,29 @@ def main():
 
     print(f"QE mode: wavelength-dependent polynomial (300-620 nm, 10 um microcells)")
     print(f"Deadtime: {'ON' if Deadtime else 'OFF'}")
+    print(f"Fiber layout: {'ORIGINAL_MICKEY' if RESET_FIBER_LAYOUT_TO_ORIGINAL else 'DEFAULT_SHIFT_AND_SHRINK'}")
     print("-" * 60)
 
-    with open(csv_path, "a", newline="") as csvfile:
+    with open(csv_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        if write_header:
-            writer.writerow(["filename", "energy"])
+        writer.writerow(["filename", "energy"])
 
-        time_slice_ranges = [(0, 9), (9, 9.5), (9.5, 10), (10, 15), (15, 40)]
+        time_slices_spec = os.environ.get("TIME_SLICES", DEFAULT_TIME_SLICES_SPEC)
+        try:
+            time_slice_ranges = parse_time_slices(time_slices_spec)
+        except ValueError as exc:
+            print(f"Invalid TIME_SLICES: {exc}")
+            sys.exit(1)
+        with open(time_slices_path, "w") as meta_file:
+            meta_file.write(time_slices_spec.strip() + "\n")
+        print(f"Time slices ({len(time_slice_ranges)}): " + ", ".join(f"{a:g}-{b:g} ns" for a, b in time_slice_ranges))
 
         for event in tree:
             nEvents += 1
             g = Photons(event)
             print(f"\nEvent {nEvents}: {g.nPhotons()} raw photons")
 
-            x_raw = g.pos_final_x + np.take(xShift, g.productionFiber)
-            y_raw = g.pos_final_y + np.take(yShift, g.productionFiber)
-            x_shifted = shrink_toward_center_array(x_raw)
-            y_shifted = shrink_toward_center_array(y_raw)
+            x_shifted, y_shifted = apply_fiber_layout(g)
 
             mask = (g.isCoreC.astype(bool)) & (g.pos_final_z > 0) & (0.0 < g.time_final) & (g.time_final < 40.0)
             x_vals  = 10 * x_shifted[mask]
@@ -295,18 +337,48 @@ def main():
                 )
                 hist_tensor.append(H.astype(np.float32))
 
-            event_tensor = np.stack(hist_tensor, axis=0).astype(np.float32)
+            event_tensor = (np.stack(hist_tensor, axis=0) / denom).astype(np.float32)
 
             filename = f"{root_stem}_event_{nEvents:04d}_SPAD{spad_size}_CH{ch.name}.npz"
-            out_path = unique_path(os.path.join(output_folder, "npy", filename))
+            out_path = os.path.join(npy_dir, filename)
 
             np.savez(
                 out_path,
                 x=event_tensor,
                 lnN=np.float32(lnN),
+                time_slices=np.asarray(time_slice_ranges, dtype=np.float32),
             )
 
             writer.writerow([os.path.basename(out_path), energy])
+
+            raw = int(n_before_qe)
+            photon_stat_rows.append({
+                "source_root": os.path.basename(input_file_path),
+                "tensor_file": os.path.basename(out_path),
+                "energy": energy,
+                "event": nEvents,
+                "spad_um": spad_side_um,
+                "channel_um": ch_side_um,
+                "n_raw": raw,
+                "n_lost_qe": int(n_discarded_qe),
+                "n_after_qe": int(n_after_qe),
+                "n_lost_dt": int(photons_lost),
+                "n_final": int(nPhotons_used),
+                "mean_lam_nm": float(mean_lam) if not np.isnan(mean_lam) else "",
+                "mean_eta": float(mean_eta) if not np.isnan(mean_eta) else "",
+                "n_oob": int(n_oob),
+            })
+
+    stat_fields = [
+        "source_root", "tensor_file", "energy", "event", "spad_um", "channel_um",
+        "n_raw", "n_lost_qe", "n_after_qe", "n_lost_dt", "n_final",
+        "mean_lam_nm", "mean_eta", "n_oob",
+    ]
+    with open(photon_stats_path, "w", newline="") as stat_file:
+        stat_writer = csv.DictWriter(stat_file, fieldnames=stat_fields)
+        stat_writer.writeheader()
+        stat_writer.writerows(photon_stat_rows)
+    print(f"Photon stats written to {photon_stats_path}")
 
     print("\n" + "=" * 60)
     print(f"Done. {nEvents + 1} events processed.")

@@ -28,6 +28,8 @@ def parse_args():
     p.add_argument("--seed", type=int, default=42, help="Random seed")
     p.add_argument("--base-dir", default="NN_model", help="Base output directory (shared across runs)")
     p.add_argument("--early-stop", type=int, default=0, help="Patience in epochs (0=off)")
+    p.add_argument("--epoch-samples", type=int, default=0,
+                   help="Cap training samples per epoch. 0 uses the full training split; >0 draws a new balanced subset each epoch.")
     p.add_argument("--recursive", action="store_true", help="Recursively search tensor_path for *.npz (recommended)")
 
     # --- prediction-only mode ---
@@ -108,6 +110,47 @@ def stratified_indices_by_energy(energies: List[float], val_frac: float, seed: i
     rng.shuffle(tr)
     rng.shuffle(va)
     return tr, va
+
+
+def balanced_epoch_indices(train_indices: List[int], energies: List[float], max_samples: int, seed: int) -> List[int]:
+    """Return a balanced, per-energy subset of train_indices for one epoch."""
+    if max_samples <= 0 or max_samples >= len(train_indices):
+        return list(train_indices)
+
+    rng = np.random.default_rng(seed)
+    energy_arr = np.round(np.asarray(energies, dtype=np.float32), 6)
+    groups: Dict[float, List[int]] = {}
+    for idx in train_indices:
+        groups.setdefault(float(energy_arr[idx]), []).append(idx)
+
+    keys = sorted(groups)
+    rng.shuffle(keys)
+    n_groups = len(keys)
+    base = max_samples // n_groups if n_groups else 0
+    remainder = max_samples % n_groups if n_groups else 0
+
+    targets = {key: min(len(groups[key]), base + (1 if i < remainder else 0)) for i, key in enumerate(keys)}
+    leftover = max_samples - sum(targets.values())
+    while leftover > 0:
+        eligible = [key for key in keys if targets[key] < len(groups[key])]
+        if not eligible:
+            break
+        rng.shuffle(eligible)
+        for key in eligible:
+            if leftover <= 0:
+                break
+            targets[key] += 1
+            leftover -= 1
+
+    picked: List[int] = []
+    for key in keys:
+        group = np.asarray(groups[key], dtype=int)
+        n_pick = targets[key]
+        if n_pick > 0:
+            picked.extend(rng.choice(group, size=n_pick, replace=False).tolist())
+
+    rng.shuffle(picked)
+    return picked
 
 
 # -------------------- log-energy helpers --------------------
@@ -214,14 +257,23 @@ def main():
             num_workers=max(0, args.workers), pin_memory=use_cuda, drop_last=False
         )
     else:
-        train_loader = DataLoader(
-            train_set, batch_size=args.bs, shuffle=True,
-            num_workers=max(0, args.workers), pin_memory=use_cuda, drop_last=False
-        )
+        if val_set is None:
+            raise RuntimeError("Validation split produced no validation samples; lower --val-split only if each energy has enough events.")
         val_loader = DataLoader(
             val_set, batch_size=args.bs, shuffle=False,
             num_workers=max(0, args.workers), pin_memory=use_cuda, drop_last=False
         )
+
+        def make_train_loader(epoch_seed: int) -> Tuple[DataLoader, int]:
+            epoch_idx = balanced_epoch_indices(tr_idx, all_E, args.epoch_samples, epoch_seed)
+            epoch_set = Subset(ds, epoch_idx)
+            return DataLoader(
+                epoch_set, batch_size=args.bs, shuffle=True,
+                num_workers=max(0, args.workers), pin_memory=use_cuda, drop_last=False
+            ), len(epoch_set)
+
+        if args.epoch_samples > 0:
+            print(f"Training epoch cap: {args.epoch_samples} samples/epoch from {len(train_set)} train samples")
 
     # normalization defaults
     mu_logE = sigma_logE = None
@@ -314,6 +366,8 @@ def main():
     cur_epoch = start_epoch
 
     for _ in range(args.epochs):
+        train_loader, n_train_epoch = make_train_loader(args.seed + cur_epoch)
+
         model.train()
         train_loss_sum = 0.0
 
@@ -376,7 +430,8 @@ def main():
         mean_pred = float(preds.mean().item())
 
         print(f"[{group}] Epoch {cur_epoch:03d} | Train {avg_train:.6f} | Val {avg_val:.6f} | "
-              f"MAE {val_mae:.6f} | RMSE {val_rmse:.6f}")
+              f"MAE {val_mae:.6f} | RMSE {val_rmse:.6f} | "
+              f"train samples {n_train_epoch}/{len(train_set)}")
 
         with open(loss_csv, "a", newline="") as f:
             csv.writer(f).writerow([
@@ -384,7 +439,7 @@ def main():
                 f"{avg_train:.6f}", f"{avg_val:.6f}",
                 f"{val_mae:.6f}", f"{val_rmse:.6f}",
                 f"{mean_true:.6f}", f"{mean_pred:.6f}",
-                len(train_set), len(val_set),
+                n_train_epoch, len(val_set),
                 f"{mu_logE:.6f}", f"{sigma_logE:.6f}",
                 f"{best_val:.6f}"
             ])
