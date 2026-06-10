@@ -54,7 +54,14 @@ Geant4 simulation itself runs inside the configured Singularity/Apptainer image,
 
 ## Folder Layout
 
-The two repositories should sit next to each other like this:
+Clone both repositories into the same parent folder:
+
+```bash
+git clone https://github.com/SamuelMcKinley/dSiPM_SPAD_NN.git
+git clone https://github.com/TTU-HEP/DREAMSim.git
+```
+
+They should sit next to each other like this:
 
 ```text
 some_parent_folder/
@@ -101,11 +108,61 @@ If it prints a different commit, switch to the required one:
 git checkout a2b7a91f48985a0962ceef6ef2527050c07d143e
 ```
 
-Then return to this repo:
+Then build DREAMSim inside the Geant4/ROOT container.
+
+First, leave any conda environment before entering the container. Your prompt should not start with `(base)` or `(dsipm-spad)` when you run Singularity.
 
 ```bash
-cd ../dSiPM_SPAD_NN
+conda deactivate
+conda deactivate
 ```
+
+It is okay if the second command says no environment is active. Then, from the `DREAMSim` folder, enter the container:
+
+```bash
+singularity run --cleanenv --bind /lustre:/lustre /lustre/research/hep/yofeng/SimulationEnv/alma9forgeant4_sbox/
+```
+
+Your prompt should change to something like:
+
+```text
+Apptainer>
+```
+
+Now run these commands inside that `Apptainer>` shell. Use the real full path to your test folder. Do not copy `$USER` or `path_to_parent_folder` literally, because `$USER` may be empty inside the clean container.
+
+For example, if your test folder is `/lustre/work/samumcki/repo_test`, run:
+
+```bash
+unset CC CXX FC LD AR AS CFLAGS CXXFLAGS LDFLAGS
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+source /workspace/root/bin/thisroot.sh
+source /workspace/geant4-v11.2.2-install/bin/geant4.sh
+cd /lustre/work/samumcki/repo_test/DREAMSim/sim
+rm -rf build
+mkdir -p build
+cd build
+cmake .. -DCMAKE_C_COMPILER=/usr/bin/cc -DCMAKE_CXX_COMPILER=/usr/bin/c++
+make -j4
+```
+
+For another user, replace `/lustre/work/samumcki/repo_test` with their actual parent folder.
+
+When the build finishes, leave the container:
+
+```bash
+exit
+```
+
+The `cmake ..` command must be run inside the container; otherwise it will not find Geant4. The `unset ...` and `export PATH=...` lines prevent conda compiler/linker settings from leaking into the container build. The `source ...` lines restore the ROOT and Geant4 setup inside the container.
+
+Then return to this repo outside the container. For the same example path:
+
+```bash
+cd /lustre/work/samumcki/repo_test/dSiPM_SPAD_NN
+```
+
+Again, replace `/lustre/work/samumcki/repo_test` with your actual parent folder.
 
 ## Before You Run
 
@@ -133,17 +190,25 @@ Check that DREAMSim was built:
 ls ../DREAMSim/sim/build/exampleB4b
 ```
 
-If that file is missing, DREAMSim needs to be built before this workflow can run.
+If that file is missing, go back to the DREAMSim build steps above.
 
-## Run the Full Workflow
+## Run a Small Test Analysis
 
-Submit the full workflow with:
+A plain `sbatch` runs a small end-to-end test analysis by default:
 
 ```bash
 sbatch run_streamlined_workflow.sh
 ```
 
-The workflow will submit many smaller SLURM jobs in stages. It waits for simulations, then SPAD tensor jobs, then photon analysis, then neural-network training and prediction.
+This is the best first run. It checks that DREAMSim, SPAD tensor creation, photon plots, neural-network training, and prediction all work before using a lot of cluster time.
+
+To run the large production setup instead, submit with:
+
+```bash
+sbatch --export=ALL,QUICK_TEST=0 run_streamlined_workflow.sh
+```
+
+The workflow submits smaller SLURM jobs in stages. It waits for simulations, then SPAD tensor jobs, then photon analysis, then neural-network training and prediction.
 
 ## Check Whether It Is Running
 
@@ -202,7 +267,20 @@ Replace `12345678` with your actual job number.
 
 ## Default Run Size
 
-The default production run currently uses:
+A plain `sbatch run_streamlined_workflow.sh` uses `QUICK_TEST=1`, which currently runs:
+
+```text
+pi+ particles
+28 training events
+28 prediction events
+14 Geant4 jobs for training
+14 Geant4 jobs for prediction
+2 neural-network epochs
+SPAD sizes: 1x1, 5x5, 10x10, 20x20, 50x50, 100x100
+32 time slices
+```
+
+The large production run, selected with `QUICK_TEST=0`, currently uses:
 
 ```text
 pi+ particles
@@ -227,6 +305,7 @@ run_streamlined_workflow.sh
 Common settings:
 
 ```bash
+QUICK_TEST=1
 PARTICLE=pi+
 ENERGIES="1 5 10 20 30 40 50 60 70 80 90 100 110 120"
 SPAD_SIZES="1x1 5x5 10x10 20x20 50x50 100x100"
@@ -234,16 +313,22 @@ TRAIN_SIM_GROUP_SIZE=14000
 PREDICT_SIM_GROUP_SIZE=14000
 ```
 
-For a tiny test run, set:
+For the default small test run, leave:
 
 ```bash
 QUICK_TEST=1
 ```
 
-For the normal large run, use:
+For the normal large run, use either:
 
 ```bash
 QUICK_TEST=0
+```
+
+or submit it without editing the file:
+
+```bash
+sbatch --export=ALL,QUICK_TEST=0 run_streamlined_workflow.sh
 ```
 
 ## Where Outputs Go

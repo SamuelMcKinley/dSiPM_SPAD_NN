@@ -65,9 +65,9 @@ if [ "$TRAIN_ROOT_DIR" = "$PREDICT_ROOT_DIR" ]; then
 fi
 
 # Separate event batches for training and prediction.
-# QUICK_TEST=1 runs 2 events per energy (enough for train/validation) to prove the full pipeline.
-# The default production setup uses separate 14,000-event train and prediction samples.
-QUICK_TEST=${QUICK_TEST:-0}
+# A plain "sbatch run_streamlined_workflow.sh" runs a small end-to-end test by default.
+# Set QUICK_TEST=0 for the 14,000-event production setup.
+QUICK_TEST=${QUICK_TEST:-1}
 if [ "$QUICK_TEST" = "1" ]; then
     TRAIN_SIM_GROUP_SIZE=${TRAIN_SIM_GROUP_SIZE:-28}
     TRAIN_SIM_NJOBS=${TRAIN_SIM_NJOBS:-14}
