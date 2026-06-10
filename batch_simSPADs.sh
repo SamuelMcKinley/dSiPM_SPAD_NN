@@ -23,6 +23,10 @@ PARTITION=${PARTITION:-nocona}
 MEMORY_PER_CPU=${MEMORY_PER_CPU:-16G}
 SIMSPADS_TIMEOUT_SECONDS=${SIMSPADS_TIMEOUT_SECONDS:-600}
 SPAD_JOB_TIME_LIMIT=${SPAD_JOB_TIME_LIMIT:-00:20:00}
+PYTHON_ENV_BIN=${PYTHON_ENV_BIN:-$HOME/miniconda3/envs/dsipm-spad/bin}
+if [ ! -x "$PYTHON_ENV_BIN/python3" ] && [ -x "$HOME/miniconda3/envs/base/bin/python3" ]; then
+    PYTHON_ENV_BIN="$HOME/miniconda3/envs/base/bin"
+fi
 
 # Group size is total nEvents trained to NN
 Group_Size=${Group_Size:-14000}
@@ -90,7 +94,7 @@ for sim_file in "$input_dir"/*.root; do
 set -euo pipefail
 
 echo "Loading environment..."
-export PATH=~/miniconda3/envs/base/bin:\$PATH
+export PATH="${PYTHON_ENV_BIN}:\$PATH"
 echo "Environment loaded."
 export TIME_SLICES="${TIME_SLICES}"
 

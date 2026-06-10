@@ -100,6 +100,10 @@ SIMSPADS_TIMEOUT_SECONDS=${SIMSPADS_TIMEOUT_SECONDS:-600}
 SPAD_JOB_TIME_LIMIT=${SPAD_JOB_TIME_LIMIT:-00:20:00}
 SIM_PARTITION=${SIM_PARTITION:-nocona}
 SIM_MEMORY=${SIM_MEMORY:-16G}
+PYTHON_ENV_BIN=${PYTHON_ENV_BIN:-$HOME/miniconda3/envs/dsipm-spad/bin}
+if [ ! -x "$PYTHON_ENV_BIN/python3" ] && [ -x "$HOME/miniconda3/envs/base/bin/python3" ]; then
+    PYTHON_ENV_BIN="$HOME/miniconda3/envs/base/bin"
+fi
 SIM_STARTUP_JITTER_SECONDS=${SIM_STARTUP_JITTER_SECONDS:-120}
 SIM_ATTEMPTS=${SIM_ATTEMPTS:-3}
 SIM_RETRY_SLEEP_SECONDS=${SIM_RETRY_SLEEP_SECONDS:-120}
@@ -880,7 +884,7 @@ run_spad_stage() {
             ONLY_ROOTS="$only_roots" TIME_SLICES="$TIME_SLICES" \
             PARTITION="$SPAD_PARTITION" MEMORY_PER_CPU="$SPAD_MEMORY_PER_CPU" \
             SIMSPADS_TIMEOUT_SECONDS="$SIMSPADS_TIMEOUT_SECONDS" SPAD_JOB_TIME_LIMIT="$SPAD_JOB_TIME_LIMIT" \
-            ./batch_simSPADs.sh)
+            PYTHON_ENV_BIN="$PYTHON_ENV_BIN" ./batch_simSPADs.sh)
         if [ -z "$ids" ]; then
             echo "ERROR: $label did not submit any SPAD jobs." >&2
             exit 1
@@ -1073,7 +1077,8 @@ if [ "$RUN_NN_TRAIN" = "1" ]; then
             EPOCHS="$NN_EPOCHS" BATCH_SIZE="$NN_TRAIN_BATCH_SIZE" WORKERS="$NN_WORKERS" \
             LEARNING_RATE="$NN_LEARNING_RATE" VAL_SPLIT="$NN_VAL_SPLIT" \
             EPOCH_SAMPLES="$NN_EPOCH_SAMPLES" \
-            PARTITION="$NN_PARTITION" MEMORY="$NN_MEMORY" CPUS="$NN_CPUS" bash ./trainNN.sh)
+            PARTITION="$NN_PARTITION" MEMORY="$NN_MEMORY" CPUS="$NN_CPUS" \
+            PYTHON_ENV_BIN="$PYTHON_ENV_BIN" bash ./trainNN.sh)
         train_ids_all=${train_ids_all:+$train_ids_all,}$ids
     done
     wait_for_jobs_with_retries nn_train "$train_ids_all"
@@ -1093,7 +1098,8 @@ if [ "$RUN_NN_PREDICT" = "1" ]; then
             SPAD_SIZE="$spad" TENSOR_DIR="$pred_dir" MODEL_BASE="$NN_MODEL_BASE" TIME_SLICES="$TIME_SLICES" \
             CHECKPOINT="$checkpoint" PRED_CSV="predictions_${spad}.csv" \
             BATCH_SIZE="$NN_PREDICT_BATCH_SIZE" WORKERS="$NN_WORKERS" \
-            PARTITION="$NN_PARTITION" MEMORY="$NN_MEMORY" CPUS="$NN_CPUS" bash ./predictNN.sh)
+            PARTITION="$NN_PARTITION" MEMORY="$NN_MEMORY" CPUS="$NN_CPUS" \
+            PYTHON_ENV_BIN="$PYTHON_ENV_BIN" bash ./predictNN.sh)
         predict_ids_all=${predict_ids_all:+$predict_ids_all,}$ids
     done
     wait_for_jobs_with_retries nn_predict "$predict_ids_all"

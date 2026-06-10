@@ -32,13 +32,25 @@ Check that the important imports work:
 python3 -c "import ROOT, numpy, matplotlib, torch; print('environment ok')"
 ```
 
-The batch scripts currently add this path automatically:
+The workflow uses this environment by default in its batch jobs:
 
 ```bash
-~/miniconda3/envs/base/bin
+$HOME/miniconda3/envs/dsipm-spad/bin
 ```
 
-If you use a different environment name, either activate it before running or update the `export PATH=...` lines in the batch scripts to point at your environment. Geant4 simulation itself runs inside the configured Singularity/Apptainer image, so most users should not need to install Geant4 manually.
+If that environment does not exist but your old `base` environment does, the scripts automatically fall back to:
+
+```bash
+$HOME/miniconda3/envs/base/bin
+```
+
+If you choose a different environment name, submit the workflow with `PYTHON_ENV_BIN` pointing to that environment. For example:
+
+```bash
+sbatch --export=ALL,PYTHON_ENV_BIN=$HOME/miniconda3/envs/my-env/bin run_streamlined_workflow.sh
+```
+
+Geant4 simulation itself runs inside the configured Singularity/Apptainer image, so most users should not need to install Geant4 manually.
 
 ## Folder Layout
 

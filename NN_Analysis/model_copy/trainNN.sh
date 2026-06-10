@@ -16,6 +16,10 @@ PARTITION=${PARTITION:-matador}
 MEMORY=${MEMORY:-32G}
 CPUS=${CPUS:-8}
 TIME_SLICES=${TIME_SLICES:-}
+PYTHON_ENV_BIN=${PYTHON_ENV_BIN:-$HOME/miniconda3/envs/dsipm-spad/bin}
+if [ ! -x "$PYTHON_ENV_BIN/python3" ] && [ -x "$HOME/miniconda3/envs/base/bin/python3" ]; then
+    PYTHON_ENV_BIN="$HOME/miniconda3/envs/base/bin"
+fi
 
 mkdir -p LOGDIR
 
@@ -45,7 +49,7 @@ gen_script() {
 set -euo pipefail
 
 echo "Loading environment ..."
-export PATH=~/miniconda3/envs/base/bin:\$PATH
+export PATH="${PYTHON_ENV_BIN}:\$PATH"
 echo "Environment loaded."
 export TIME_SLICES="${TIME_SLICES}"
 
