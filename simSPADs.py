@@ -206,8 +206,51 @@ def main():
 
     ch = ChannelInfo(ch_side_um, ch_nBins)
 
+    expected_events_match = re.search(r"_(\d+)events_", os.path.basename(input_file_path))
+    expected_events_from_name = int(expected_events_match.group(1)) if expected_events_match else None
+
     input_file = ROOT.TFile(input_file_path, "READ")
+    if not input_file or input_file.IsZombie():
+        print(f"ERROR: Could not open readable ROOT file: {input_file_path}", file=sys.stderr)
+        sys.exit(2)
+
     tree = input_file.Get("tree")
+    if not tree:
+        print(f"ERROR: ROOT file has no readable 'tree': {input_file_path}", file=sys.stderr)
+        try:
+            input_file.Close()
+        except Exception:
+            pass
+        sys.exit(2)
+
+    try:
+        root_entries = int(tree.GetEntries())
+    except Exception as exc:
+        print(f"ERROR: Could not read tree entries from {input_file_path}: {exc}", file=sys.stderr)
+        try:
+            input_file.Close()
+        except Exception:
+            pass
+        sys.exit(2)
+
+    if root_entries <= 0:
+        print(f"ERROR: ROOT tree has no entries: {input_file_path}", file=sys.stderr)
+        try:
+            input_file.Close()
+        except Exception:
+            pass
+        sys.exit(2)
+
+    if expected_events_from_name is not None and root_entries < expected_events_from_name:
+        print(
+            f"ERROR: ROOT tree has only {root_entries}/{expected_events_from_name} entries: {input_file_path}",
+            file=sys.stderr,
+        )
+        try:
+            input_file.Close()
+        except Exception:
+            pass
+        sys.exit(2)
 
     npy_dir = os.path.join(output_folder, "npy")
     csv_path = os.path.join(output_folder, "labels.csv")
@@ -342,7 +385,7 @@ def main():
             filename = f"{root_stem}_event_{nEvents:04d}_SPAD{spad_size}_CH{ch.name}.npz"
             out_path = os.path.join(npy_dir, filename)
 
-            np.savez(
+            np.savez_compressed(
                 out_path,
                 x=event_tensor,
                 lnN=np.float32(lnN),
@@ -380,13 +423,38 @@ def main():
         stat_writer.writerows(photon_stat_rows)
     print(f"Photon stats written to {photon_stats_path}")
 
+    processed_events = nEvents + 1
     print("\n" + "=" * 60)
-    print(f"Done. {nEvents + 1} events processed.")
+    print(f"Done. {processed_events} events processed.")
     print(f"Total photons post-QE:      {total_photons_cumulative}")
     print(f"Total photons lost deadtime: {total_lost_cumulative}")
 
+    if processed_events <= 0:
+        print(f"ERROR: Processed 0 events from ROOT file: {input_file_path}", file=sys.stderr)
+        try:
+            input_file.Close()
+        except Exception:
+            pass
+        sys.exit(2)
+
+    if expected_events_from_name is not None and processed_events != expected_events_from_name:
+        print(
+            f"ERROR: Processed {processed_events}/{expected_events_from_name} expected events from {input_file_path}",
+            file=sys.stderr,
+        )
+        try:
+            input_file.Close()
+        except Exception:
+            pass
+        sys.exit(2)
+
     update_photon_tracking(spad_size, channel_size, energy,
                            total_photons_cumulative, total_lost_cumulative)
+
+    try:
+        input_file.Close()
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     main()

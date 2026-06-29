@@ -3,6 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH -p nocona
 #SBATCH --mem=16G
+#SBATCH --time=2-00:00:00
 
 # End-to-end dSiPM SPAD workflow runner.
 # Run interactively or submit the controller with:
@@ -30,13 +31,13 @@ RUN_NN_PREDICT=${RUN_NN_PREDICT:-1}
 RUN_CUMULATIVE_NPY=${RUN_CUMULATIVE_NPY:-1}
 RUN_PLOTS=${RUN_PLOTS:-1}
 WAIT_FOR_JOBS=${WAIT_FOR_JOBS:-1}
-MAX_JOB_RETRIES=${MAX_JOB_RETRIES:-2}
+MAX_JOB_RETRIES=${MAX_JOB_RETRIES:-4}
 SLURM_POLL_SECONDS=${SLURM_POLL_SECONDS:-60}
 SLURM_SETTLE_SECONDS=${SLURM_SETTLE_SECONDS:-15}
 SLURM_ID_CHUNK_SIZE=${SLURM_ID_CHUNK_SIZE:-100}
 MIN_ROOT_SIZE_MB=${MIN_ROOT_SIZE_MB:-1}
-ROOT_READABILITY_CHECK=${ROOT_READABILITY_CHECK:-0}
-ROOT_CHECK_TIMEOUT_SECONDS=${ROOT_CHECK_TIMEOUT_SECONDS:-30}
+ROOT_READABILITY_CHECK=${ROOT_READABILITY_CHECK:-1}
+ROOT_CHECK_TIMEOUT_SECONDS=${ROOT_CHECK_TIMEOUT_SECONDS:-180}
 
 # ---------------- Editable physics/data parameters -----------
 PARTICLE=${PARTICLE:-pi+}
@@ -47,9 +48,13 @@ TIME_SLICES=${TIME_SLICES:-"0-8,8-9,9-9.1,9.1-9.2,9.2-9.3,9.3-9.4,9.4-9.5,9.5-9.
 TIME_SLICE_COUNT=${TIME_SLICE_COUNT:-$(printf '%s' "$TIME_SLICES" | tr ',' '\n' | awk 'NF {n++} END {print n+0}')}
 TIME_SLICE_TAG=${TIME_SLICE_TAG:-ts${TIME_SLICE_COUNT}_$(printf '%s' "$TIME_SLICES" | cksum | awk '{print $1}')}
 
-TRAIN_ROOT_DIR=${TRAIN_ROOT_DIR:-/lustre/work/$USER/pi_train}
-PREDICT_ROOT_DIR=${PREDICT_ROOT_DIR:-/lustre/work/$USER/pi_predict}
-SPAD_RESULTS_ROOT=${SPAD_RESULTS_ROOT:-/lustre/work/$USER/SPAD_results}
+# Keep outputs tied to the repo copy by default so test clones do not collide
+# with production runs from another checkout. Override OUTPUT_BASE or the
+# individual directories at sbatch time if you want shared output locations.
+OUTPUT_BASE=${OUTPUT_BASE:-$(dirname "$REPO_DIR")/dSiPM_SPAD_outputs}
+TRAIN_ROOT_DIR=${TRAIN_ROOT_DIR:-$OUTPUT_BASE/pi_train}
+PREDICT_ROOT_DIR=${PREDICT_ROOT_DIR:-$OUTPUT_BASE/pi_predict}
+SPAD_RESULTS_ROOT=${SPAD_RESULTS_ROOT:-$OUTPUT_BASE/SPAD_results}
 PHOTON_ANALYSIS_DIR=${PHOTON_ANALYSIS_DIR:-$SPAD_RESULTS_ROOT/photon_full_analysis}
 CUMULATIVE_DIR=${CUMULATIVE_DIR:-$SPAD_RESULTS_ROOT/cumulative_npy}
 CURRENT_TENSOR_ROOT=${CURRENT_TENSOR_ROOT:-$SPAD_RESULTS_ROOT/current_tensors}
@@ -78,8 +83,7 @@ if [ "$QUICK_TEST" = "1" ]; then
     NN_PREDICT_BATCH_SIZE=${NN_PREDICT_BATCH_SIZE:-32}
     NN_WORKERS=${NN_WORKERS:-2}
     NN_VAL_SPLIT=${NN_VAL_SPLIT:-0.50}
-    MIN_ROOT_SIZE_KB=${MIN_ROOT_SIZE_KB:-100}
-    SIMSPADS_TIMEOUT_SECONDS=${SIMSPADS_TIMEOUT_SECONDS:-120}
+    MIN_ROOT_SIZE_KB=${MIN_ROOT_SIZE_KB:-25}
     SPAD_JOB_TIME_LIMIT=${SPAD_JOB_TIME_LIMIT:-00:05:00}
 else
     TRAIN_SIM_GROUP_SIZE=${TRAIN_SIM_GROUP_SIZE:-14000}
@@ -92,18 +96,21 @@ else
     NN_WORKERS=${NN_WORKERS:-8}
     NN_VAL_SPLIT=${NN_VAL_SPLIT:-0.30}
     MIN_ROOT_SIZE_KB=${MIN_ROOT_SIZE_KB:-1024}
-    SIMSPADS_TIMEOUT_SECONDS=${SIMSPADS_TIMEOUT_SECONDS:-3600}
-    SPAD_JOB_TIME_LIMIT=${SPAD_JOB_TIME_LIMIT:-01:15:00}
+    SPAD_JOB_TIME_LIMIT=${SPAD_JOB_TIME_LIMIT:-04:00:00}
 fi
 MIN_ROOT_SIZE_KB=${MIN_ROOT_SIZE_KB:-$((MIN_ROOT_SIZE_MB * 1024))}
-SIMSPADS_TIMEOUT_SECONDS=${SIMSPADS_TIMEOUT_SECONDS:-600}
 SPAD_JOB_TIME_LIMIT=${SPAD_JOB_TIME_LIMIT:-00:20:00}
 SIM_PARTITION=${SIM_PARTITION:-nocona}
 SIM_MEMORY=${SIM_MEMORY:-16G}
 PYTHON_ENV_BIN=${PYTHON_ENV_BIN:-$HOME/miniconda3/envs/dsipm-spad/bin}
-if [ ! -x "$PYTHON_ENV_BIN/python3" ] && [ -x "$HOME/miniconda3/envs/base/bin/python3" ]; then
-    PYTHON_ENV_BIN="$HOME/miniconda3/envs/base/bin"
+if [ ! -x "$PYTHON_ENV_BIN/python3" ]; then
+    if [ -x "$HOME/miniconda3/envs/base/bin/python3" ]; then
+        PYTHON_ENV_BIN="$HOME/miniconda3/envs/base/bin"
+    elif [ -x "$HOME/miniconda3/bin/python3" ]; then
+        PYTHON_ENV_BIN="$HOME/miniconda3/bin"
+    fi
 fi
+export PATH="$PYTHON_ENV_BIN:$PATH"
 SIM_STARTUP_JITTER_SECONDS=${SIM_STARTUP_JITTER_SECONDS:-120}
 SIM_ATTEMPTS=${SIM_ATTEMPTS:-3}
 SIM_RETRY_SLEEP_SECONDS=${SIM_RETRY_SLEEP_SECONDS:-120}
@@ -236,7 +243,7 @@ any_jobs_in_queue() {
         count=$((count + 1))
         if (( count >= SLURM_ID_CHUNK_SIZE )); then
             joined=$(IFS=,; printf '%s' "${chunk_ids[*]}")
-            if squeue -h -j "$joined" 2>/dev/null | grep -q .; then
+            if [ -n "$(squeue -h -j "$joined" 2>/dev/null)" ]; then
                 return 0
             fi
             chunk_ids=()
@@ -246,7 +253,7 @@ any_jobs_in_queue() {
 
     if (( ${#chunk_ids[@]} > 0 )); then
         joined=$(IFS=,; printf '%s' "${chunk_ids[*]}")
-        if squeue -h -j "$joined" 2>/dev/null | grep -q .; then
+        if [ -n "$(squeue -h -j "$joined" 2>/dev/null)" ]; then
             return 0
         fi
     fi
@@ -367,7 +374,7 @@ wait_for_jobs_with_retries() {
 
 require_npz() {
     local dir=$1
-    if ! find "$dir" \( -type f -o -type l \) -name '*.npz' -print -quit | grep -q .; then
+    if [ -z "$(find "$dir" \( -type f -o -type l \) -name '*.npz' -print -quit 2>/dev/null)" ]; then
         echo "ERROR: No .npz tensors found under $dir" >&2
         exit 1
     fi
@@ -400,11 +407,33 @@ root_file_retry_script() {
 
 root_file_cache_key() {
     local path=$1
-    stat -c 'v2\t%n\t%s\t%Y' "$path" 2>/dev/null
+    stat -c 'v3\t%n\t%s\t%Y' "$path" 2>/dev/null
+}
+
+root_validation_marker_for_root() {
+    local path=$1
+    printf '%s/.validated_roots/%s.ok\n' "$(dirname "$path")" "$(basename "$path")"
+}
+
+root_validation_marker_matches() {
+    local path=$1
+    local expected_events=${2:-0}
+    local marker marker_key current_key marker_expected
+    marker=$(root_validation_marker_for_root "$path")
+    [ -s "$marker" ] || return 1
+    marker_key=$(sed -n '1p' "$marker" 2>/dev/null || true)
+    current_key=$(root_file_cache_key "$path" || true)
+    [ -n "$marker_key" ] && [ "$marker_key" = "$current_key" ] || return 1
+    marker_expected=$(sed -n 's/^expected_events=//p' "$marker" 2>/dev/null | tail -1)
+    if [ -n "$expected_events" ] && [ "$expected_events" != "0" ] && [ "$marker_expected" != "$expected_events" ]; then
+        return 1
+    fi
+    return 0
 }
 
 root_file_failure_reason() {
     local path=$1
+    local expected_events=${2:-0}
     local size min_bytes key
     min_bytes=$((MIN_ROOT_SIZE_KB * 1024))
 
@@ -419,21 +448,27 @@ root_file_failure_reason() {
         return 1
     fi
 
+    if root_validation_marker_matches "$path" "$expected_events"; then
+        return 0
+    fi
+
     if [ "$ROOT_READABILITY_CHECK" != "1" ]; then
         return 0
     fi
 
     key=$(root_file_cache_key "$path" || true)
-    if [ -n "$key" ] && grep -Fxq "$key" "$ROOT_CHECK_CACHE" 2>/dev/null; then
+    check_key=${key:+$key	expected_events=$expected_events}
+    if [ -n "$check_key" ] && grep -Fxq "$check_key" "$ROOT_CHECK_CACHE" 2>/dev/null; then
         return 0
     fi
 
-    if timeout "$ROOT_CHECK_TIMEOUT_SECONDS" python3 - "$path" >/dev/null 2>&1 <<'PYROOTONE'
+    if timeout "$ROOT_CHECK_TIMEOUT_SECONDS" "$PYTHON_ENV_BIN/python3" - "$path" "$expected_events" >/dev/null 2>&1 <<'PYROOTONE'
 import sys
 import ROOT
 
 ROOT.gROOT.SetBatch(True)
 path = sys.argv[1]
+expected = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 0
 f = ROOT.TFile(path, "READ")
 if not f or f.IsZombie():
     raise SystemExit(1)
@@ -442,7 +477,7 @@ if not tree:
     f.Close()
     raise SystemExit(1)
 entries = int(tree.GetEntries())
-if entries <= 0:
+if entries <= 0 or (expected and entries != expected):
     f.Close()
     raise SystemExit(1)
 if tree.GetEntry(0) <= 0:
@@ -451,11 +486,15 @@ if tree.GetEntry(0) <= 0:
 f.Close()
 PYROOTONE
     then
-        [ -n "$key" ] && printf '%s\n' "$key" >> "$ROOT_CHECK_CACHE"
+        [ -n "$check_key" ] && printf '%s\n' "$check_key" >> "$ROOT_CHECK_CACHE"
         return 0
     fi
 
-    printf 'ROOT unreadable, zombie, missing tree, or timed out after %ss' "$ROOT_CHECK_TIMEOUT_SECONDS"
+    if [ -n "$expected_events" ] && [ "$expected_events" != "0" ]; then
+        printf 'ROOT unreadable, zombie, missing tree, wrong event count, or timed out after %ss' "$ROOT_CHECK_TIMEOUT_SECONDS"
+    else
+        printf 'ROOT unreadable, zombie, missing tree, or timed out after %ss' "$ROOT_CHECK_TIMEOUT_SECONDS"
+    fi
     return 1
 }
 
@@ -556,7 +595,7 @@ missing_sim_jobs() {
             good=0
             bad_paths=""
             for path in "${matches[@]}"; do
-                if reason=$(root_file_failure_reason "$path"); then
+                if reason=$(root_file_failure_reason "$path" "$job_size"); then
                     good=1
                     break
                 fi
@@ -618,6 +657,7 @@ run_geant4_stage() {
             Group_Size="$group_size" nJobs="$n_jobs" ONLY_JOBS="$only_jobs" \
             SIM_DIR="$SIM_DIR" SIM_MACRO="$SIM_MACRO" SINGULARITY_IMAGE="$SINGULARITY_IMAGE" \
             PARTITION="$SIM_PARTITION" MEMORY="$SIM_MEMORY" \
+            PYTHON_ENV_BIN="$PYTHON_ENV_BIN" \
             SIM_STARTUP_JITTER_SECONDS="$SIM_STARTUP_JITTER_SECONDS" \
             SIM_ATTEMPTS="$SIM_ATTEMPTS" SIM_RETRY_SLEEP_SECONDS="$SIM_RETRY_SLEEP_SECONDS" ./batch_Sims.sh)
         if [ -z "$ids" ]; then
@@ -665,14 +705,28 @@ spad_failure_marker_reason() {
     local root_file=$1
     local tag=$2
     local spad=$3
-    local marker marker_key current_key exit_code
+    local marker marker_key current_key exit_code failure_type
     marker=$(spad_failure_marker_for_root "$root_file" "$tag" "$spad")
     [ -s "$marker" ] || return 1
     marker_key=$(sed -n '1p' "$marker" 2>/dev/null || true)
     current_key=$(root_file_cache_key "$root_file" || true)
     [ -n "$marker_key" ] && [ "$marker_key" = "$current_key" ] || return 1
     exit_code=$(sed -n 's/^exit_code=//p' "$marker" 2>/dev/null | tail -1)
-    printf 'previous SPAD conversion failed or timed out%s' "${exit_code:+ (exit $exit_code)}"
+    failure_type=$(sed -n 's/^failure_type=//p' "$marker" 2>/dev/null | tail -1)
+    if [ -z "$failure_type" ]; then
+        case "$exit_code" in
+            root_preflight_*|2) failure_type=root_read ;;
+            *) failure_type=spad_conversion ;;
+        esac
+    fi
+    case "$failure_type" in
+        root_preflight|root_read)
+            printf 'previous SPAD ROOT-read check failed%s' "${exit_code:+ (exit $exit_code)}"
+            ;;
+        *)
+            printf 'previous SPAD conversion failed%s' "${exit_code:+ (exit $exit_code)}"
+            ;;
+    esac
     return 0
 }
 
@@ -792,7 +846,7 @@ missing_spad_outputs() {
 
             root_file=""
             for path in "${matches[@]}"; do
-                if reason=$(root_file_failure_reason "$path"); then
+                if reason=$(root_file_failure_reason "$path" "$job_size"); then
                     root_file="$path"
                     break
                 fi
@@ -808,7 +862,14 @@ missing_spad_outputs() {
             fi
 
             if marker_reason=$(spad_failure_marker_reason "$root_file" "$tag" "$spad"); then
-                printf '%s|ROOT %s|-\n' "$root_file" "$marker_reason"
+                case "$marker_reason" in
+                    previous\ SPAD\ ROOT-read*)
+                        printf '%s|ROOT %s|-\n' "$root_file" "$marker_reason"
+                        ;;
+                    *)
+                        printf '%s|%s|-\n' "$root_file" "$marker_reason"
+                        ;;
+                esac
                 continue
             fi
 
@@ -883,13 +944,17 @@ run_spad_stage() {
             Energies="$ENERGIES" Group_Size="$sim_group_size" nJobs="$sim_n_jobs" \
             ONLY_ROOTS="$only_roots" TIME_SLICES="$TIME_SLICES" \
             PARTITION="$SPAD_PARTITION" MEMORY_PER_CPU="$SPAD_MEMORY_PER_CPU" \
-            SIMSPADS_TIMEOUT_SECONDS="$SIMSPADS_TIMEOUT_SECONDS" SPAD_JOB_TIME_LIMIT="$SPAD_JOB_TIME_LIMIT" \
+            SPAD_JOB_TIME_LIMIT="$SPAD_JOB_TIME_LIMIT" \
             PYTHON_ENV_BIN="$PYTHON_ENV_BIN" ./batch_simSPADs.sh)
         if [ -z "$ids" ]; then
             echo "ERROR: $label did not submit any SPAD jobs." >&2
             exit 1
         fi
-        wait_for_jobs_with_retries "$label" "$ids"
+        # SPAD jobs can fail because ROOT opened a corrupt or partially written
+        # input file. In that case batch_simSPADs.sh writes a .failed_roots
+        # marker, and the next loop pass regenerates the ROOT file. Do not
+        # blindly retry the same SPAD job against the same bad input here.
+        wait_for_jobs "$label" "$ids"
         sleep "$SLURM_SETTLE_SECONDS"
     done
 }

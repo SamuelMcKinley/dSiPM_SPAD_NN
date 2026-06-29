@@ -21,11 +21,14 @@ particle="pi+"
 # Override SPAD_Size and Channel_Size at submission time if needed.
 PARTITION=${PARTITION:-nocona}
 MEMORY_PER_CPU=${MEMORY_PER_CPU:-16G}
-SIMSPADS_TIMEOUT_SECONDS=${SIMSPADS_TIMEOUT_SECONDS:-600}
 SPAD_JOB_TIME_LIMIT=${SPAD_JOB_TIME_LIMIT:-00:20:00}
 PYTHON_ENV_BIN=${PYTHON_ENV_BIN:-$HOME/miniconda3/envs/dsipm-spad/bin}
-if [ ! -x "$PYTHON_ENV_BIN/python3" ] && [ -x "$HOME/miniconda3/envs/base/bin/python3" ]; then
-    PYTHON_ENV_BIN="$HOME/miniconda3/envs/base/bin"
+if [ ! -x "$PYTHON_ENV_BIN/python3" ]; then
+    if [ -x "$HOME/miniconda3/envs/base/bin/python3" ]; then
+        PYTHON_ENV_BIN="$HOME/miniconda3/envs/base/bin"
+    elif [ -x "$HOME/miniconda3/bin/python3" ]; then
+        PYTHON_ENV_BIN="$HOME/miniconda3/bin"
+    fi
 fi
 
 # Group size is total nEvents trained to NN
@@ -102,11 +105,62 @@ cd ${dest_dir}
 
 failure_marker_dir="${dest_dir}/.failed_roots"
 failure_marker="\${failure_marker_dir}/${fname}_SPAD${SPAD_Size}.failed"
-root_key=\$(stat -c 'v2\t%n\t%s\t%Y' "${sim_file}" 2>/dev/null || true)
+root_key=\$(stat -c 'v3\t%n\t%s\t%Y' "${sim_file}" 2>/dev/null || true)
 rm -f "\${failure_marker}"
 
+expected_events=\$(python3 - <<'PYEVENTS'
+import re
+name = "${fname}"
+match = re.search(r'_(\d+)events_', name)
+print(match.group(1) if match else "0")
+PYEVENTS
+)
+
 set +e
-timeout "${SIMSPADS_TIMEOUT_SECONDS}" python3 -u ${home_dir}/simSPADs.py \
+timeout "\${ROOT_PREFLIGHT_TIMEOUT_SECONDS:-240}" python3 - "${sim_file}" "\${expected_events}" <<'PYROOTCHECK'
+import sys
+import ROOT
+
+ROOT.gROOT.SetBatch(True)
+path = sys.argv[1]
+expected = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 0
+f = ROOT.TFile(path, "READ")
+if not f or f.IsZombie():
+    raise SystemExit(2)
+tree = f.Get("tree")
+if not tree:
+    f.Close()
+    raise SystemExit(2)
+entries = int(tree.GetEntries())
+if entries <= 0 or (expected and entries != expected):
+    print(f"ERROR: ROOT tree has {entries}/{expected} entries: {path}", file=sys.stderr)
+    f.Close()
+    raise SystemExit(2)
+if tree.GetEntry(0) <= 0:
+    print(f"ERROR: Could not read first ROOT tree entry: {path}", file=sys.stderr)
+    f.Close()
+    raise SystemExit(2)
+f.Close()
+PYROOTCHECK
+preflight_rc=\$?
+set -e
+
+if [ "\${preflight_rc}" -ne 0 ]; then
+    mkdir -p "\${failure_marker_dir}"
+    {
+        printf '%s\n' "\${root_key}"
+        printf 'root=%s\n' "${sim_file}"
+        printf 'exit_code=root_preflight_%s\n' "\${preflight_rc}"
+        printf 'failure_type=root_preflight\n'
+        printf 'job_id=%s\n' "\${SLURM_JOB_ID:-unknown}"
+        date '+failed_at=%F %T'
+    } > "\${failure_marker}"
+    echo "ERROR: ROOT preflight failed with exit code \${preflight_rc}; marker written to \${failure_marker}" >&2
+    exit 2
+fi
+
+set +e
+python3 -u ${home_dir}/simSPADs.py \
 "${sim_file}" \
 "${energy}" \
 ${OUTPUT_TAG}_${energy}GeV_run${run}_SPAD${SPAD_Size}_CH${Channel_Size} \
@@ -121,6 +175,11 @@ if [ "\${simspads_rc}" -ne 0 ]; then
         printf '%s\n' "\${root_key}"
         printf 'root=%s\n' "${sim_file}"
         printf 'exit_code=%s\n' "\${simspads_rc}"
+        if [ "\${simspads_rc}" -eq 2 ]; then
+            printf 'failure_type=root_read\n'
+        else
+            printf 'failure_type=spad_conversion\n'
+        fi
         printf 'job_id=%s\n' "\${SLURM_JOB_ID:-unknown}"
         date '+failed_at=%F %T'
     } > "\${failure_marker}"

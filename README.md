@@ -333,24 +333,38 @@ sbatch --export=ALL,QUICK_TEST=0 run_streamlined_workflow.sh
 
 ## Where Outputs Go
 
-Large outputs are not saved in Git. By default they are written under your own cluster work directory:
+Large outputs are not saved in Git. By default they are written next to the repo copy you run.
+
+For example, if this repo is here:
 
 ```text
-/lustre/work/$USER/pi_train
-/lustre/work/$USER/pi_predict
-/lustre/work/$USER/SPAD_results
+/lustre/work/$USER/repo_test/dSiPM_SPAD_NN
 ```
+
+then the output base folder will be:
+
+```text
+/lustre/work/$USER/repo_test/dSiPM_SPAD_outputs
+```
+
+This keeps a test checkout from interfering with a different checkout or an ongoing production analysis.
 
 Important output folders:
 
 ```text
-Training ROOT files:     /lustre/work/$USER/pi_train
-Prediction ROOT files:   /lustre/work/$USER/pi_predict
-SPAD tensors:            /lustre/work/$USER/SPAD_results/train_<SPAD_SIZE>
-Prediction tensors:      /lustre/work/$USER/SPAD_results/predict_<SPAD_SIZE>
-Photon analysis:         /lustre/work/$USER/SPAD_results/photon_full_analysis
-Cumulative npy tensors:  /lustre/work/$USER/SPAD_results/cumulative_npy
+Training ROOT files:     <output_base>/pi_train
+Prediction ROOT files:   <output_base>/pi_predict
+SPAD tensors:            <output_base>/SPAD_results/train_<SPAD_SIZE>
+Prediction tensors:      <output_base>/SPAD_results/predict_<SPAD_SIZE>
+Photon analysis:         <output_base>/SPAD_results/photon_full_analysis
+Cumulative npy tensors:  <output_base>/SPAD_results/cumulative_npy
 NN models/results:       NN_Analysis/<SPAD_SIZE>_model
+```
+
+To choose a different output location, submit with `OUTPUT_BASE`:
+
+```bash
+sbatch --export=ALL,OUTPUT_BASE=/lustre/work/$USER/my_test_outputs run_streamlined_workflow.sh
 ```
 
 ## If a Run Stops or Fails
@@ -386,13 +400,13 @@ tail -n 80 slurm-JOBID.out
 Count training ROOT files:
 
 ```bash
-find /lustre/work/$USER/pi_train -maxdepth 1 -name '*100events*.root' | wc -l
+find ../dSiPM_SPAD_outputs/pi_train -maxdepth 1 -name '*100events*.root' | wc -l
 ```
 
 Count prediction ROOT files:
 
 ```bash
-find /lustre/work/$USER/pi_predict -maxdepth 1 -name '*100events*.root' | wc -l
+find ../dSiPM_SPAD_outputs/pi_predict -maxdepth 1 -name '*100events*.root' | wc -l
 ```
 
 Check Git status before committing:
