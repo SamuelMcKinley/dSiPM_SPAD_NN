@@ -178,12 +178,6 @@ The path should end with:
 dSiPM_SPAD_NN
 ```
 
-Check that the main scripts are present:
-
-```bash
-ls run_streamlined_workflow.sh batch_Sims.sh batch_simSPADs.sh
-```
-
 Check that DREAMSim was built:
 
 ```bash
@@ -200,13 +194,8 @@ A plain `sbatch` runs a small end-to-end test analysis by default:
 sbatch run_streamlined_workflow.sh
 ```
 
-This is the best first run. It checks that DREAMSim, SPAD tensor creation, photon plots, neural-network training, and prediction all work before using a lot of cluster time.
+This is a good first run to do, as it checks that DREAMSim, SPAD tensor creation, photon plots, neural-network training, and prediction all work before using a lot of cluster time.
 
-To run the large production setup instead, submit with:
-
-```bash
-sbatch --export=ALL,QUICK_TEST=0 run_streamlined_workflow.sh
-```
 
 The workflow submits smaller SLURM jobs in stages. It waits for simulations, then SPAD tensor jobs, then photon analysis, then neural-network training and prediction.
 
@@ -221,7 +210,7 @@ squeue -u $USER
 The main controller job will be named something like:
 
 ```text
-run_stre
+run_stre...
 ```
 
 Simulation jobs will be named something like:
@@ -233,7 +222,7 @@ Simulations_...
 SPAD jobs will include:
 
 ```text
-simSPAD
+simSPAD...
 ```
 
 Neural-network jobs will include:
@@ -319,21 +308,15 @@ For the default small test run, leave:
 QUICK_TEST=1
 ```
 
-For the normal large run, use either:
+For the normal large run, use:
 
 ```bash
 QUICK_TEST=0
 ```
 
-or submit it without editing the file:
-
-```bash
-sbatch --export=ALL,QUICK_TEST=0 run_streamlined_workflow.sh
-```
-
 ## Where Outputs Go
 
-Large outputs are not saved in Git. By default they are written next to the repo copy you run.
+Large outputs are written next to the repo copy you run.
 
 For example, if this repo is here:
 
@@ -394,7 +377,7 @@ squeue -u $USER
 Show recent main-log messages:
 
 ```bash
-tail -n 80 slurm-JOBID.out
+tail -n 100 slurm-JOBID.out
 ```
 
 Count training ROOT files:
@@ -407,10 +390,4 @@ Count prediction ROOT files:
 
 ```bash
 find ../dSiPM_SPAD_outputs/pi_predict -maxdepth 1 -name '*100events*.root' | wc -l
-```
-
-Check Git status before committing:
-
-```bash
-git status --short
 ```
